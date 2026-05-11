@@ -53,7 +53,10 @@ Production URL: https://finance-ops-exception-triage.vercel.app
 
 Original worker deployment: `dpl_HNc6E2U2sHqhAp98y5RwdFqBzDrn`, aliased to production on 2026-05-10.
 
-Fixer deployment: https://finance-ops-exception-triage-bin3wdu4t-batb4016-9101s-projects.vercel.app, aliased to production on 2026-05-10 after the reviewer-packet quality pass.
+Fixer deployments:
+
+- `dpl_9oQ9Bn8zcvj6afCG8RGuxxDMvuKG`: https://finance-ops-exception-triage-ausy980ot-batb4016-9101s-projects.vercel.app, aliased to production on 2026-05-11 after the priority-order, packet-evidence, CI, and security-header pass.
+- Prior reviewer-packet pass: https://finance-ops-exception-triage-bin3wdu4t-batb4016-9101s-projects.vercel.app, aliased to production on 2026-05-10.
 
 ## Fixture Provenance
 
