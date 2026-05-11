@@ -1,5 +1,5 @@
 import { transactions } from "../data/transactions";
-import { summarizeQueue, triageTransaction } from "../lib/triage";
+import { buildReviewQueue, createReviewerPacket, summarizeQueue } from "../lib/triage";
 
 const stateLabels = {
   "ready-for-approval": "Ready for approval",
@@ -10,8 +10,13 @@ const stateLabels = {
 };
 
 export default function Home() {
-  const results = transactions.map(triageTransaction);
+  const results = buildReviewQueue(transactions);
   const summary = summarizeQueue(results);
+  const packet = createReviewerPacket(results);
+  const topCase =
+    results.length > 0
+      ? results.reduce((current, result) => (result.score > current.score ? result : current))
+      : undefined;
 
   return (
     <main>
@@ -30,6 +35,24 @@ export default function Home() {
           <strong>No real fraud detection</strong>
           <p>Rules support human review of synthetic finance exceptions only.</p>
         </div>
+      </section>
+
+      <section className="reviewPath" aria-label="Reviewer quick path">
+        <article>
+          <span>Top reviewer action</span>
+          <strong>{topCase?.transaction.id ?? "No open exceptions"}</strong>
+          <p>{topCase?.reviewerAction ?? "No reviewer action is needed for an empty queue."}</p>
+        </article>
+        <article>
+          <span>Fixture provenance</span>
+          <strong>Synthetic ledger export</strong>
+          <p>Each row carries receipt, policy, approval, owner, and age signals.</p>
+        </article>
+        <article>
+          <span>Handoff boundary</span>
+          <strong>Review packet only</strong>
+          <p>No approvals, payments, real ledgers, or fraud claims are automated.</p>
+        </article>
       </section>
 
       <section className="summary" aria-label="Exception summary">
@@ -74,8 +97,28 @@ export default function Home() {
               <span>Score {result.score}</span>
               <p>{result.guidance}</p>
             </div>
+            <div className="reviewerAction">
+              <span>Recommended reviewer action</span>
+              <p>{result.reviewerAction}</p>
+            </div>
+            <div className="sourceTrail">
+              <span>Source trail</span>
+              <p>{result.sourceTrail.join(" -> ")}</p>
+            </div>
           </article>
         ))}
+      </section>
+
+      <section className="packet" aria-label="Reviewer packet preview">
+        <div>
+          <p className="eyebrow">Reviewer packet preview</p>
+          <h2>Copy-ready exception handoff</h2>
+          <p>
+            The packet keeps queue evidence, reviewer actions, and the no-fraud-detection boundary
+            together so the demo reads as an approval workflow, not a magic classifier.
+          </p>
+        </div>
+        <pre>{packet}</pre>
       </section>
     </main>
   );

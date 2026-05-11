@@ -26,6 +26,11 @@ export type TriageResult = {
   score: number;
   evidence: string[];
   guidance: string;
+  reviewerAction: string;
+  sourceTrail: string[];
+  derivedSignals: {
+    inferredDuplicate: boolean;
+  };
 };
 
 const stateGuidance: Record<ExceptionState, string> = {
@@ -39,6 +44,14 @@ const stateGuidance: Record<ExceptionState, string> = {
     "Compare vendor, amount, memo, and submitter against nearby claims before action.",
   "aging-escalation":
     "Escalate the owner path because the exception has waited too long without closure."
+};
+
+const stateActions: Record<ExceptionState, string> = {
+  "ready-for-approval": "Send to finance approver with business purpose attached.",
+  "needs-evidence": "Request the missing receipt or policy context from the submitter.",
+  "policy-review": "Hold payment and route the row to policy review.",
+  "duplicate-risk": "Compare against the matching claim before any approval action.",
+  "aging-escalation": "Escalate to the submitter's manager and finance queue owner."
 };
 
 export function triageTransaction(transaction: Transaction): TriageResult {
@@ -87,8 +100,56 @@ export function triageTransaction(transaction: Transaction): TriageResult {
     state,
     score,
     evidence,
-    guidance: stateGuidance[state]
+    guidance: stateGuidance[state],
+    reviewerAction: stateActions[state],
+    sourceTrail: buildSourceTrail(transaction),
+    derivedSignals: {
+      inferredDuplicate: false
+    }
   };
+}
+
+export function buildReviewQueue(transactions: Transaction[]): TriageResult[] {
+  const duplicateKeys = new Set(
+    Object.entries(
+      transactions.reduce<Record<string, number>>((counts, transaction) => {
+        const key = duplicateKey(transaction);
+        counts[key] = (counts[key] ?? 0) + 1;
+        return counts;
+      }, {})
+    )
+      .filter(([, count]) => count > 1)
+      .map(([key]) => key)
+  );
+
+  return transactions.map((transaction) => {
+    const inferredDuplicate =
+      duplicateKeys.has(duplicateKey(transaction)) && transaction.approvalHistory === "none";
+    const scoringTransaction = {
+      ...transaction,
+      duplicateSignal: transaction.duplicateSignal || inferredDuplicate
+    };
+    const result = triageTransaction(scoringTransaction);
+    const resultWithSource = {
+      ...result,
+      transaction,
+      derivedSignals: {
+        inferredDuplicate
+      }
+    };
+
+    if (inferredDuplicate && !transaction.duplicateSignal) {
+      return {
+        ...resultWithSource,
+        evidence: [
+          "Duplicate candidate derived from vendor, amount, submitter, and cost-center context.",
+          ...result.evidence.filter((item) => !item.startsWith("Duplicate signal"))
+        ]
+      };
+    }
+
+    return resultWithSource;
+  });
 }
 
 export function summarizeQueue(results: TriageResult[]) {
@@ -109,6 +170,34 @@ export function summarizeQueue(results: TriageResult[]) {
   );
 }
 
+export function createReviewerPacket(results: TriageResult[]): string {
+  const summary = summarizeQueue(results);
+  const queueLines = results
+    .filter((result) => result.state !== "ready-for-approval")
+    .map(
+      (result) =>
+        `- ${result.transaction.id} | ${result.state} | score ${result.score} | Recommended reviewer action: ${result.reviewerAction}`
+    )
+    .join("\n");
+
+  return [
+    "# Finance Ops Exception Triage",
+    "",
+    "Boundary: No real fraud detection. This packet summarizes synthetic finance operations exceptions for human review only.",
+    "",
+    `Queue: ${results.length} synthetic rows, ${summary.totalScore} total review score.`,
+    "",
+    "## Recommended reviewer action",
+    queueLines || "- No exceptions require follow-up in this fixture set.",
+    "",
+    "## Source evidence",
+    ...results.flatMap((result) => [
+      `- ${result.transaction.id}: ${result.evidence[0]}`,
+      `  Source trail: ${result.sourceTrail.join(" -> ")}`
+    ])
+  ].join("\n");
+}
+
 function chooseState(transaction: Transaction): ExceptionState {
   if (transaction.duplicateSignal) {
     return "duplicate-risk";
@@ -127,4 +216,24 @@ function chooseState(transaction: Transaction): ExceptionState {
   }
 
   return "ready-for-approval";
+}
+
+function duplicateKey(transaction: Transaction) {
+  return [
+    transaction.vendor.toLowerCase(),
+    transaction.amount,
+    transaction.currency,
+    transaction.submittedBy.toLowerCase(),
+    transaction.costCenter.toLowerCase()
+  ].join("|");
+}
+
+function buildSourceTrail(transaction: Transaction) {
+  return [
+    `fixture:${transaction.id}`,
+    `submitter:${transaction.submittedBy}`,
+    `receipt:${transaction.receiptStatus}`,
+    `policy:${transaction.policyMatch}`,
+    `approval:${transaction.approvalHistory}`
+  ];
 }

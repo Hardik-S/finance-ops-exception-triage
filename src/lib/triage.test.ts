@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { transactions } from "../data/transactions";
-import { summarizeQueue, triageTransaction } from "./triage";
+import { buildReviewQueue, createReviewerPacket, summarizeQueue, triageTransaction } from "./triage";
 
 describe("triageTransaction", () => {
   it("prioritizes duplicate risk ahead of otherwise clean evidence", () => {
@@ -31,5 +31,45 @@ describe("triageTransaction", () => {
     expect(summary["duplicate-risk"]).toBe(1);
     expect(summary["aging-escalation"]).toBe(1);
     expect(summary.totalScore).toBeGreaterThan(0);
+  });
+
+  it("derives duplicate risk from transaction context instead of trusting a pre-labeled row", () => {
+    const contextualRows = transactions.map((transaction) => ({
+      ...transaction,
+      duplicateSignal: false
+    }));
+
+    const queue = buildReviewQueue(contextualRows);
+    const derivedDuplicate = queue.find((result) => result.transaction.id === "TX-1140");
+
+    expect(derivedDuplicate?.state).toBe("duplicate-risk");
+    expect(derivedDuplicate?.evidence.join(" ")).toContain("Duplicate candidate");
+    expect(derivedDuplicate?.transaction.duplicateSignal).toBe(false);
+    expect(derivedDuplicate?.derivedSignals.inferredDuplicate).toBe(true);
+  });
+
+  it("creates a reviewer packet with boundary, next action, and source evidence", () => {
+    const queue = buildReviewQueue(transactions);
+    const packet = createReviewerPacket(queue);
+
+    expect(packet).toContain("Finance Ops Exception Triage");
+    expect(packet).toContain("No real fraud detection");
+    expect(packet).toContain("Recommended reviewer action");
+    expect(packet).toContain("TX-1140");
+  });
+
+  it("does not infer duplicate risk for a single matching-shaped row", () => {
+    const [singleRow] = transactions;
+    const queue = buildReviewQueue([{ ...singleRow, duplicateSignal: false }]);
+
+    expect(queue[0].state).toBe("ready-for-approval");
+    expect(queue[0].derivedSignals.inferredDuplicate).toBe(false);
+  });
+
+  it("creates an empty queue packet without throwing", () => {
+    const packet = createReviewerPacket([]);
+
+    expect(packet).toContain("0 synthetic rows");
+    expect(packet).toContain("No exceptions require follow-up");
   });
 });

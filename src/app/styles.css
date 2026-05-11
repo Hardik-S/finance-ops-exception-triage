@@ -86,12 +86,51 @@ h1 {
   margin: 24px 0;
 }
 
+.reviewPath {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+
 .summary article {
   min-height: 96px;
   border: 1px solid rgba(29, 36, 51, 0.12);
   border-radius: 8px;
   padding: 16px;
   background: #ffffff;
+}
+
+.reviewPath article {
+  min-height: 132px;
+  border: 1px solid rgba(29, 36, 51, 0.13);
+  border-radius: 8px;
+  padding: 18px;
+  background: #17364f;
+  color: #ffffff;
+}
+
+.reviewPath span,
+.reviewerAction span,
+.sourceTrail span {
+  display: block;
+  color: inherit;
+  font-size: 0.76rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  opacity: 0.76;
+}
+
+.reviewPath strong {
+  display: block;
+  margin: 12px 0 8px;
+  font-size: 1.35rem;
+}
+
+.reviewPath p {
+  margin: 0;
+  line-height: 1.48;
 }
 
 .summary strong {
@@ -201,10 +240,55 @@ ul {
   padding-left: 12px;
 }
 
-.guidance p {
+.guidance p,
+.reviewerAction p,
+.sourceTrail p {
   margin: 6px 0 0;
   color: #314057;
   line-height: 1.45;
+}
+
+.reviewerAction,
+.sourceTrail {
+  border: 1px solid rgba(29, 36, 51, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8faf7;
+}
+
+.packet {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 22px;
+  align-items: start;
+  margin-top: 28px;
+  padding-top: 26px;
+  border-top: 1px solid rgba(29, 36, 51, 0.15);
+}
+
+.packet h2 {
+  margin: 10px 0 12px;
+  font-size: 1.8rem;
+}
+
+.packet p {
+  margin: 0;
+  color: #425066;
+  line-height: 1.6;
+}
+
+pre {
+  max-height: 420px;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid rgba(29, 36, 51, 0.14);
+  border-radius: 8px;
+  padding: 18px;
+  background: #101c27;
+  color: #eef6f8;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 860px) {
@@ -214,17 +298,20 @@ ul {
   }
 
   .hero,
-  .board {
+  .board,
+  .packet {
     grid-template-columns: 1fr;
   }
 
-  .summary {
+  .summary,
+  .reviewPath {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 520px) {
-  .summary {
+  .summary,
+  .reviewPath {
     grid-template-columns: 1fr;
   }
 
