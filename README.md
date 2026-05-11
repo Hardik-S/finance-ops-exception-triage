@@ -38,6 +38,8 @@ npm run build
 
 The deployed page should contain `Finance Ops Exception Triage` and the `No real fraud detection` boundary copy.
 
+Production URL: https://finance-ops-exception-triage.vercel.app
+
 ## Decision Log
 
 - The repo is public because every transaction is synthetic and no credentials, personal data, bank data, or private business logic are included.
