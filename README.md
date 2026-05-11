@@ -53,7 +53,9 @@ The deployed page should contain `Finance Ops Exception Triage`, `No real fraud 
 
 Production URL: https://finance-ops-exception-triage.vercel.app
 
-Original worker deployment: `dpl_HNc6E2U2sHqhAp98y5RwdFqBzDrn`, aliased to production on 2026-05-10. The fixer pass should record a new deployment id in the coordination run log when redeployed.
+Original worker deployment: `dpl_HNc6E2U2sHqhAp98y5RwdFqBzDrn`, aliased to production on 2026-05-10.
+
+Fixer deployment: https://finance-ops-exception-triage-bin3wdu4t-batb4016-9101s-projects.vercel.app, aliased to production on 2026-05-10 after the reviewer-packet quality pass.
 
 ## Fixture Provenance
 
