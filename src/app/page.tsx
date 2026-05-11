@@ -1,7 +1,12 @@
 import { transactions } from "../data/transactions";
-import { buildReviewQueue, createReviewerPacket, summarizeQueue } from "../lib/triage";
+import {
+  buildReviewQueue,
+  createReviewerPacket,
+  type ExceptionState,
+  summarizeQueue
+} from "../lib/triage";
 
-const stateLabels = {
+const stateLabels: Record<ExceptionState, string> = {
   "ready-for-approval": "Ready for approval",
   "needs-evidence": "Needs evidence",
   "policy-review": "Policy review",
@@ -59,7 +64,7 @@ export default function Home() {
         {Object.entries(stateLabels).map(([state, label]) => (
           <article key={state}>
             <span>{label}</span>
-            <strong>{summary[state as keyof typeof stateLabels]}</strong>
+            <strong>{summary[state as ExceptionState]}</strong>
           </article>
         ))}
       </section>

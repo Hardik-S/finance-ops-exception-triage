@@ -30,11 +30,8 @@ This project demonstrates a controlled workflow product instead of a generic das
 ## Local Setup
 
 ```powershell
-npm install
-npm run test
-npm run typecheck
+npm ci
 npm run verify
-npm run build
 npm run dev
 ```
 
@@ -43,13 +40,14 @@ npm run dev
 Expected verification for this slice after the fixer quality pass:
 
 ```powershell
-npm run test
-npm run typecheck
-npm run build
+npm ci
 npm run verify
+npm audit --omit=dev --audit-level=moderate
 ```
 
 The deployed page should contain `Finance Ops Exception Triage`, `No real fraud detection`, `Recommended reviewer action`, and `Reviewer packet preview`.
+
+Audit caveat: `npm audit --omit=dev --audit-level=moderate` currently reports a moderate transitive PostCSS advisory through `next@16.2.6`. The suggested `npm audit fix --force` path downgrades to an old breaking Next version, so the project records the advisory instead of applying a destructive framework change.
 
 Production URL: https://finance-ops-exception-triage.vercel.app
 
@@ -73,9 +71,11 @@ The source trail shown in the UI is deliberately narrow: it points back to fixtu
 
 - `src/data/transactions.ts`: synthetic transaction queue.
 - `src/lib/triage.ts`: scoring, state selection, derived duplicate detection, queue summary, and reviewer packet generation.
-- `src/lib/triage.test.ts`: Vitest coverage for duplicate precedence, state summary, derived duplicate inference, and packet output.
+- `src/lib/triage.test.ts`: Vitest coverage for duplicate precedence, priority ordering, state summary, normalized duplicate inference, and packet output.
 - `src/app/page.tsx`: reviewer workflow surface and packet preview.
 - `src/app/styles.css`: responsive layout and status styling.
+- `docs/reviewer-packet.example.md`: committed example of the generated reviewer handoff packet.
+- `.github/workflows/verify.yml`: GitHub Actions gate for `npm run verify` on `main`, fixer branches, and pull requests.
 
 ## Decision Log
 
@@ -84,8 +84,11 @@ The source trail shown in the UI is deliberately narrow: it points back to fixtu
 - Duplicate risk is prioritized before other states because duplicate payment prevention is a concrete finance-ops control and a useful reviewer signal.
 - The product uses rule-based triage for the first slice. A model-based classifier would be premature until the deterministic workflow and approval boundary are clear.
 - The fixer pass added `buildReviewQueue` so duplicate-risk rows can be derived from context before packet generation. This preserves fixture transparency while reducing reliance on pre-labeled demo rows.
+- Review queues are sorted by reviewer score before rendering. This keeps the first viewport, transaction board, and packet aligned around the highest-risk synthetic exception rather than the source fixture order.
+- Duplicate grouping normalizes case and whitespace because exported finance rows often include casing and spacing drift that should not hide a duplicate candidate.
 - `createReviewerPacket` is intentionally plain Markdown so the handoff can be inspected in source, tested, and copied without a backend or account integration.
 - The `typecheck` script disables incremental output so verification does not leave `tsconfig.tsbuildinfo` noise in the worktree.
+- The app sets conservative response headers in `next.config.ts` because the demo is public and has no reason to be embedded, request device permissions, or load third-party runtime assets.
 
 ## Limitations
 
@@ -96,6 +99,5 @@ The source trail shown in the UI is deliberately narrow: it points back to fixtu
 ## Next Improvements
 
 - Add a small filter or segmented control for exception state once the UI needs interaction beyond the reviewer packet.
-- Add CI for `npm run verify` after the fixer branch lands.
 - Add screenshot or accessibility checks for the production route.
 - Expand the synthetic queue with multi-currency edge cases only if they add workflow judgment rather than visual clutter.

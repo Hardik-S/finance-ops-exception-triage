@@ -58,6 +58,59 @@ describe("triageTransaction", () => {
     expect(packet).toContain("TX-1140");
   });
 
+  it("orders the review queue by highest reviewer risk first", () => {
+    const queue = buildReviewQueue(transactions);
+
+    expect(queue.map((result) => result.transaction.id)).toEqual([
+      "TX-1167",
+      "TX-1119",
+      "TX-1140",
+      "TX-1088",
+      "TX-1042"
+    ]);
+  });
+
+  it("orders the packet follow-up list by reviewer priority", () => {
+    const packet = createReviewerPacket(buildReviewQueue(transactions));
+
+    expect(packet.indexOf("TX-1167")).toBeLessThan(packet.indexOf("TX-1119"));
+    expect(packet.indexOf("TX-1119")).toBeLessThan(packet.indexOf("TX-1140"));
+  });
+
+  it("normalizes duplicate keys across casing and whitespace drift", () => {
+    const queue = buildReviewQueue([
+      {
+        ...transactions[0],
+        vendor: " Northstar   Travel Desk ",
+        submittedBy: " AVERY chen ",
+        costCenter: "Revenue   Ops",
+        duplicateSignal: false,
+        approvalHistory: "manager"
+      },
+      {
+        ...transactions[3],
+        vendor: "northstar travel desk",
+        submittedBy: "avery chen",
+        costCenter: "revenue ops",
+        duplicateSignal: false,
+        approvalHistory: "none"
+      }
+    ]);
+
+    expect(queue[0].transaction.id).toBe("TX-1140");
+    expect(queue[0].state).toBe("duplicate-risk");
+    expect(queue[0].derivedSignals.inferredDuplicate).toBe(true);
+  });
+
+  it("includes every evidence line for multi-rule packet cases", () => {
+    const packet = createReviewerPacket(buildReviewQueue(transactions));
+
+    expect(packet).toContain("TX-1167");
+    expect(packet).toContain("Receipt is missing.");
+    expect(packet).toContain("Policy check needs human interpretation.");
+    expect(packet).toContain("Exception has been open for 14 days.");
+  });
+
   it("does not infer duplicate risk for a single matching-shaped row", () => {
     const [singleRow] = transactions;
     const queue = buildReviewQueue([{ ...singleRow, duplicateSignal: false }]);

@@ -122,34 +122,36 @@ export function buildReviewQueue(transactions: Transaction[]): TriageResult[] {
       .map(([key]) => key)
   );
 
-  return transactions.map((transaction) => {
-    const inferredDuplicate =
-      duplicateKeys.has(duplicateKey(transaction)) && transaction.approvalHistory === "none";
-    const scoringTransaction = {
-      ...transaction,
-      duplicateSignal: transaction.duplicateSignal || inferredDuplicate
-    };
-    const result = triageTransaction(scoringTransaction);
-    const resultWithSource = {
-      ...result,
-      transaction,
-      derivedSignals: {
-        inferredDuplicate
-      }
-    };
-
-    if (inferredDuplicate && !transaction.duplicateSignal) {
-      return {
-        ...resultWithSource,
-        evidence: [
-          "Duplicate candidate derived from vendor, amount, submitter, and cost-center context.",
-          ...result.evidence.filter((item) => !item.startsWith("Duplicate signal"))
-        ]
+  return transactions
+    .map((transaction) => {
+      const inferredDuplicate =
+        duplicateKeys.has(duplicateKey(transaction)) && transaction.approvalHistory === "none";
+      const scoringTransaction = {
+        ...transaction,
+        duplicateSignal: transaction.duplicateSignal || inferredDuplicate
       };
-    }
+      const result = triageTransaction(scoringTransaction);
+      const resultWithSource = {
+        ...result,
+        transaction,
+        derivedSignals: {
+          inferredDuplicate
+        }
+      };
 
-    return resultWithSource;
-  });
+      if (inferredDuplicate && !transaction.duplicateSignal) {
+        return {
+          ...resultWithSource,
+          evidence: [
+            "Duplicate candidate derived from vendor, amount, submitter, and cost-center context.",
+            ...result.evidence.filter((item) => !item.startsWith("Duplicate signal"))
+          ]
+        };
+      }
+
+      return resultWithSource;
+    })
+    .sort((left, right) => right.score - left.score || left.transaction.id.localeCompare(right.transaction.id));
 }
 
 export function summarizeQueue(results: TriageResult[]) {
@@ -192,7 +194,8 @@ export function createReviewerPacket(results: TriageResult[]): string {
     "",
     "## Source evidence",
     ...results.flatMap((result) => [
-      `- ${result.transaction.id}: ${result.evidence[0]}`,
+      `- ${result.transaction.id}:`,
+      ...result.evidence.map((item) => `  - ${item}`),
       `  Source trail: ${result.sourceTrail.join(" -> ")}`
     ])
   ].join("\n");
@@ -220,11 +223,11 @@ function chooseState(transaction: Transaction): ExceptionState {
 
 function duplicateKey(transaction: Transaction) {
   return [
-    transaction.vendor.toLowerCase(),
+    normalizeText(transaction.vendor),
     transaction.amount,
     transaction.currency,
-    transaction.submittedBy.toLowerCase(),
-    transaction.costCenter.toLowerCase()
+    normalizeText(transaction.submittedBy),
+    normalizeText(transaction.costCenter)
   ].join("|");
 }
 
@@ -236,4 +239,8 @@ function buildSourceTrail(transaction: Transaction) {
     `policy:${transaction.policyMatch}`,
     `approval:${transaction.approvalHistory}`
   ];
+}
+
+function normalizeText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
